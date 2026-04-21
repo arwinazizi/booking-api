@@ -33,7 +33,62 @@ async function getBookings(user) {
   });
 }
 
+async function getBookingById(id) {
+  const booking = await prisma.booking.findUnique({
+    where: { id },
+  });
+
+  if (!booking) {
+    const error = new Error('Booking not found');
+    error.statusCode = 404;
+    throw error;
+  }
+
+  return booking;
+}
+
+function ensureBookingAccess(user, booking) {
+  const isOwner = booking.userId === user.id;
+  const isAdmin = user.role === 'admin';
+
+  if (!isOwner && !isAdmin) {
+    const error = new Error('Forbidden: insufficient permissions');
+    error.statusCode = 403;
+    throw error;
+  }
+}
+
+async function updateBooking(id, user, data) {
+  const booking = await getBookingById(id);
+
+  ensureBookingAccess(user, booking);
+
+  const updatedBooking = await prisma.booking.update({
+    where: { id },
+    data: {
+      title: data.title ?? booking.title,
+      date: data.date ? new Date(data.date) : booking.date,
+    },
+  });
+
+  return updatedBooking;
+}
+
+async function deleteBooking(id, user) {
+  const booking = await getBookingById(id);
+
+  ensureBookingAccess(user, booking);
+
+  await prisma.booking.delete({
+    where: { id },
+  });
+
+  return { message: 'Booking deleted successfully' };
+}
+
 module.exports = {
   createBooking,
   getBookings,
+  updateBooking,
+  deleteBooking,
 };
