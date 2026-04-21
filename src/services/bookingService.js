@@ -9,10 +9,18 @@ async function createBooking(userId, data) {
     throw error;
   }
 
+  const parsedDate = new Date(date);
+
+  if (Number.isNaN(parsedDate.getTime())) {
+    const error = new Error('Invalid date');
+    error.statusCode = 400;
+    throw error;
+  }
+
   const booking = await prisma.booking.create({
     data: {
       title,
-      date: new Date(date),
+      date: parsedDate,
       userId,
     },
   });
@@ -63,11 +71,29 @@ async function updateBooking(id, user, data) {
 
   ensureBookingAccess(user, booking);
 
+  if (!data.title && !data.date) {
+    const error = new Error('At least one field (title or date) is required');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  let parsedDate = booking.date;
+
+  if (data.date) {
+    parsedDate = new Date(data.date);
+
+    if (Number.isNaN(parsedDate.getTime())) {
+      const error = new Error('Invalid date');
+      error.statusCode = 400;
+      throw error;
+    }
+  }
+
   const updatedBooking = await prisma.booking.update({
     where: { id },
     data: {
       title: data.title ?? booking.title,
-      date: data.date ? new Date(data.date) : booking.date,
+      date: parsedDate,
     },
   });
 

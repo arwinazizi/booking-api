@@ -2,7 +2,29 @@ const bcrypt = require('bcryptjs');
 const prisma = require('../utils/prisma');
 const generateToken = require('../utils/generateToken');
 
+function isValidEmail(email) {
+  return /\S+@\S+\.\S+/.test(email);
+}
+
 async function registerUser({ name, email, password }) {
+  if (!name || !email || !password) {
+    const error = new Error('Name, email, and password are required');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (!isValidEmail(email)) {
+    const error = new Error('Invalid email format');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (password.length < 6) {
+    const error = new Error('Password must be at least 6 characters long');
+    error.statusCode = 400;
+    throw error;
+  }
+
   const existingUser = await prisma.user.findUnique({
     where: { email },
   });
@@ -40,6 +62,12 @@ async function registerUser({ name, email, password }) {
 }
 
 async function loginUser({ email, password }) {
+  if (!email || !password) {
+    const error = new Error('Email and password are required');
+    error.statusCode = 400;
+    throw error;
+  }
+
   const user = await prisma.user.findUnique({
     where: { email },
   });
